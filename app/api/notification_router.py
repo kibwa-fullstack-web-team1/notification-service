@@ -1,21 +1,12 @@
 from fastapi import APIRouter, HTTPException, status
-from pydantic import BaseModel
 from app.core.aws_notification_service import AWSNotificationService
+from app.schemas.notification_schemas import EmailRequest, SmsRequest
+from app.schemas.verification_schemas import PhoneNumberRequest, VerificationCodeRequest, VerificationResponse
 
 router = APIRouter(
     prefix="/notifications",
     tags=["Notifications"]
 )
-
-class EmailRequest(BaseModel):
-    sender_email: str
-    recipient_email: str
-    subject: str
-    body: str
-
-class SmsRequest(BaseModel):
-    phone_number: str
-    message: str
 
 @router.post("/send-email")
 async def send_email_notification(request: EmailRequest):
