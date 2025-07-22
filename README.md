@@ -1,2 +1,3 @@
-# notification-service
- '기억의 정원' 프로젝트의 알람 서비스를 관리합니다.
+# Notification Service
+
+This service handles sending notifications (email/SMS) to users' families based on detected patterns.
