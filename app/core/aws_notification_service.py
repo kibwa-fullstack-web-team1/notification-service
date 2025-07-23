@@ -45,5 +45,5 @@ def send_sms(phone_number: str, message: str) -> bool:
         return False
 
 def send_verification_sms(phone_number: str, code: str) -> bool:
-    message = f"[KIBWA] 인증번호는 [{code}] 입니다."
+    message = f"[GARDEN-OF-MEMORIES] 인증번호는 [{code}] 입니다."
     return send_sms(phone_number, message)
