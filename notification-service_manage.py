@@ -8,5 +8,5 @@ if __name__ == '__main__':
         app,
         host='0.0.0.0',
         port=8002,
-        log_level="debug"
+        log_config=None # logging.basicConfig를 사용하므로 Uvicorn의 기본 로깅 설정을 비활성화
     )
