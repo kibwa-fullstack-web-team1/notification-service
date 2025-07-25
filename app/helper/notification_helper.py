@@ -21,7 +21,8 @@ async def send_alert_to_guardians(user_id: int, reasons: list):
             for guardian in guardians:
                 guardian_email = guardian.get('email')
                 guardian_phone = guardian.get('phone_number')
-                notification_message = f"[기억의 정원] 어머님의 최근 활동에 주의가 필요하여 알려드립니다. 사유: {notification_reason}"
+                relationship_display_name = guardian.get('relationship_display_name', '보호자') # 관계 표시명 가져오기
+                notification_message = f"[기억의 정원] {relationship_display_name}님의 최근 활동에 주의가 필요하여 알려드립니다. 사유: {notification_reason}"
                 
                 # SMS 발송
                 if guardian_phone:
