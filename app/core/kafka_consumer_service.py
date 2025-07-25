@@ -4,14 +4,14 @@ import json
 import threading
 import time
 import asyncio
-from app.helper import notification_helper # notification_helper 임포트
+from app.config.config import Config # Config 임포트 추가
+from app.helper import notification_helper
 
 logger = logging.getLogger(__name__)
 
-# Config는 notification_helper에서 임포트하므로 여기서는 제거
-# KAFKA_BROKER_URL = Config.KAFKA_BROKER_URL
-# DAILY_QUESTION_SERVICE_URL = Config.DAILY_QUESTION_SERVICE_URL
-# USER_SERVICE_URL = Config.USER_SERVICE_URL
+KAFKA_BROKER_URL = Config.KAFKA_BROKER_URL # Config에서 직접 가져오도록 수정
+DAILY_QUESTION_SERVICE_URL = Config.DAILY_QUESTION_SERVICE_URL
+USER_SERVICE_URL = Config.USER_SERVICE_URL
 
 _consumer_instance = None
 _consumer_thread = None
@@ -64,7 +64,7 @@ def start_kafka_consumer(topics):
 
     if not _consumer_running_flag[0]:
         _consumer_instance = Consumer({
-            'bootstrap.servers': KAFKA_BROKER_URL,
+            'bootstrap.servers': Config.KAFKA_BROKER_URL, # Config.KAFKA_BROKER_URL 사용
             'group.id': 'notification_group_v2',
             'auto.offset.reset': 'earliest'
         })
