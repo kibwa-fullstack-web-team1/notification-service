@@ -3,13 +3,13 @@ from confluent_kafka import Consumer, KafkaException, KafkaError
 import json
 import threading
 import time
-import httpx
 import asyncio
-from app.config.config import Config
+from app.config.config import Config # Config 임포트 추가
+from app.helper import notification_helper
 
 logger = logging.getLogger(__name__)
 
-KAFKA_BROKER_URL = Config.KAFKA_BROKER_URL
+KAFKA_BROKER_URL = Config.KAFKA_BROKER_URL # Config에서 직접 가져오도록 수정
 DAILY_QUESTION_SERVICE_URL = Config.DAILY_QUESTION_SERVICE_URL
 USER_SERVICE_URL = Config.USER_SERVICE_URL
 
@@ -24,52 +24,7 @@ async def _process_message(msg):
         topic = msg.topic()
 
         if topic == 'score-updates':
-            user_id = message_payload.get('user_id')
-            cognitive_score = message_payload.get('cognitive_score')
-            semantic_score = message_payload.get('semantic_score')
-            timestamp = message_payload.get('timestamp')
-
-            logger.info(f"Received message: {msg.value().decode('utf-8')} from topic {msg.topic()}")
-            logger.info(f"Processing score update for user {user_id}: Cognitive={cognitive_score}, Semantic={semantic_score}")
-
-            # 지능형 알림 조건 확인
-            send_notification = False
-            reasons = []
-            if cognitive_score < Config.COGNITIVE_SCORE_THRESHOLD:
-                send_notification = True
-                reasons.append(f"인지 점수({cognitive_score})가 기준({Config.COGNITIVE_SCORE_THRESHOLD})보다 낮습니다.")
-            if semantic_score < Config.SEMANTIC_SCORE_THRESHOLD:
-                send_notification = True
-                reasons.append(f"의미 유사도 점수({semantic_score})가 기준({Config.SEMANTIC_SCORE_THRESHOLD})보다 낮습니다.")
-
-            if send_notification:
-                async def send_notification_to_guardian_async():
-                    logger.info(f"Inside send_notification_to_guardian_async for user {user_id}")
-                    async with httpx.AsyncClient() as client:
-                        try:
-                            logger.info(f"Calling user service for guardians of user {user_id} at {USER_SERVICE_URL}/users/{user_id}/guardians")
-                            guardian_response = await client.get(f"{USER_SERVICE_URL}/users/{user_id}/guardians")
-                            guardian_response.raise_for_status()
-                            guardians = guardian_response.json()
-                            logger.info(f"Received guardians: {guardians}")
-
-                            notification_reason = " ".join(reasons)
-                            for guardian in guardians:
-                                guardian_email = guardian.get('email')
-                                guardian_phone = guardian.get('phone_number')
-                                notification_message = f"[기억의 정원] 어머님의 최근 활동에 주의가 필요하여 알려드립니다. 사유: {notification_reason}"
-                                logger.info(f"Sending notification to guardian {guardian_email}/{guardian_phone}: {notification_message}")
-
-                        except httpx.HTTPStatusError as e:
-                            logger.error(f"보호자 정보 조회 HTTP 오류: {e.response.status_code} - {e.response.text}")
-                        except httpx.RequestError as e:
-                            logger.error(f"보호자 서비스 연결 오류: {e}")
-                        except Exception as e:
-                            logger.error(f"알림 발송 중 오류: {e}")
-
-                await send_notification_to_guardian_async()
-            else:
-                logger.info(f"점수가 기준치 이상이므로 알림을 발송하지 않습니다. (인지: {cognitive_score}>={Config.COGNITIVE_SCORE_THRESHOLD}, 의미: {semantic_score}>={Config.SEMANTIC_SCORE_THRESHOLD})")
+            await notification_helper.process_score_update_message(message_payload)
 
     except json.JSONDecodeError:
         logger.error(f"Error decoding JSON from message: {msg.value().decode('utf-8')}")
@@ -109,7 +64,7 @@ def start_kafka_consumer(topics):
 
     if not _consumer_running_flag[0]:
         _consumer_instance = Consumer({
-            'bootstrap.servers': KAFKA_BROKER_URL,
+            'bootstrap.servers': Config.KAFKA_BROKER_URL, # Config.KAFKA_BROKER_URL 사용
             'group.id': 'notification_group_v2',
             'auto.offset.reset': 'earliest'
         })
