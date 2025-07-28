@@ -5,3 +5,5 @@ boto3
 python-dotenv
 confluent-kafka
 APScheduler
+SQLAlchemy
+psycopg2-binary

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, status
 from app.core import aws_notification_service
-from app.helper import verification_helper
+from app.helper import verification_helper, notification_helper
 from app.schemas.notification_schemas import EmailRequest, SmsRequest
 from app.schemas.verification_schemas import PhoneNumberRequest, VerificationCodeRequest
 
@@ -47,3 +47,10 @@ async def verify_phone_code(request: VerificationCodeRequest):
     if not success:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="인증 코드가 유효하지 않습니다.")
     return {"message": "전화번호가 성공적으로 인증되었습니다."}
+
+@router.post("/generate-weekly-reports")
+async def generate_weekly_reports_manually():
+    """주간 보고서 생성을 수동으로 트리거합니다.
+    """
+    await notification_helper.send_weekly_reports()
+    return {"message": "주간 보고서 생성이 트리거되었습니다."}
