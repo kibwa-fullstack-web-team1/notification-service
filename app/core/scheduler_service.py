@@ -21,7 +21,7 @@ def start_scheduler():
     스케줄러를 시작하고 주기적인 작업을 등록합니다.
     """
     # 1분마다 작업 발행 (테스트용)
-    scheduler.add_job(schedule_jobs, 'interval', minutes=1)
+    scheduler.add_job(schedule_jobs, 'interval', weeks=1)
     
     scheduler.start()
     print("Scheduler started and jobs are scheduled.")

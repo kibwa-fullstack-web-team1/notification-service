@@ -9,6 +9,9 @@ from app.config.config import Config
 from app.utils.logger import setup_logging
 import logging
 
+from app.utils.db import Base, engine
+from app.models import report # Report 모델 임포트
+
 logger = logging.getLogger(__name__)
 
 def create_app():
@@ -20,6 +23,10 @@ def create_app():
     @app.on_event("startup")
     async def startup_event():
         logger.info("Application startup event triggered.")
+        
+        # DB 테이블 생성
+        Base.metadata.create_all(bind=engine)
+        logger.info("Database tables created/checked.")
         
         # Kafka 브로커 준비 대기 및 토픽 생성 로직
         admin_client = AdminClient({'bootstrap.servers': Config.KAFKA_BROKER_URL})

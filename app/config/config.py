@@ -13,6 +13,7 @@ class Config:
     KAFKA_BROKER_URL = os.getenv("KAFKA_BROKER_URL") 
     DAILY_QUESTION_SERVICE_URL = os.getenv("DAILY_QUESTION_SERVICE_URL", "http://daily-question-service:8001")
     USER_SERVICE_URL = os.getenv("USER_SERVICE_URL", "http://user-service:8000")
+    DATABASE_URL = os.getenv("DATABASE_URL")
 
     # 알림 발송을 위한 점수 임계값
     # 70점: 인지적으로 건강한 상태를 구분하는 기준선 (점수산정방식.md 참고)
