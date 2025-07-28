@@ -13,7 +13,9 @@ async def get_answers_by_user(user_id: int, start_date: str, end_date: str):
                 f"{DAILY_QUESTION_SERVICE_URL}/questions/answers?user_id={user_id}&start_date={start_date}&end_date={end_date}"
             )
             response.raise_for_status()
-            return response.json()
+            answers_data = response.json()
+            logger.info(f"Received answers data from daily-question-service: {answers_data}")
+            return answers_data
         except httpx.HTTPStatusError as e:
             logger.error(f"HTTP error fetching answers for user {user_id}: {e.response.status_code} - {e.response.text}")
             return None

@@ -73,8 +73,27 @@ async def send_weekly_reports():
         
         logger.info(f"Answers for user {senior_id}: {answers}")
 
-        report_html = "<h1>주간 보고서</h1>"
+        report_html = "<meta charset=\"utf-8\"><h1>주간 보고서</h1>"
         report_html += f"<h2>{senior.get('username')}님</h2>"
+
+        cognitive_scores = [ans.get('cognitive_score') for ans in answers if ans.get('cognitive_score') is not None]
+        semantic_scores = [ans.get('semantic_score') for ans in answers if ans.get('semantic_score') is not None]
+
+        avg_cognitive = sum(cognitive_scores) / len(cognitive_scores) if cognitive_scores else 0
+        min_cognitive = min(cognitive_scores) if cognitive_scores else 0
+        max_cognitive = max(cognitive_scores) if cognitive_scores else 0
+
+        avg_semantic = sum(semantic_scores) / len(semantic_scores) if semantic_scores else 0
+        min_semantic = min(semantic_scores) if semantic_scores else 0
+        max_semantic = max(semantic_scores) if semantic_scores else 0
+
+        report_html += "<h3>주간 점수 요약</h3>"
+        report_html += "<ul>"
+        report_html += f"<li>**인지 점수 평균:** {avg_cognitive:.2f} (최저: {min_cognitive:.2f}, 최고: {max_cognitive:.2f})</li>"
+        report_html += f"<li>**의미 점수 평균:** {avg_semantic:.2f} (최저: {min_semantic:.2f}, 최고: {max_semantic:.2f})</li>"
+        report_html += "</ul>"
+
+        report_html += "<h3>상세 답변 내역</h3>"
         report_html += "<table border='1'><tr><th>질문</th><th>답변</th><th>분석 점수</th></tr>"
         for answer in answers:
             report_html += f"<tr><td>{answer.get('question_content')}</td><td>{answer.get('text_content')}</td><td>인지점수: {answer.get('cognitive_score')}, 의미점수: {answer.get('semantic_score')}</td></tr>"
