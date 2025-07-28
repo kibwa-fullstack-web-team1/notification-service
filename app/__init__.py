@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from app.api.notification_router import router as notification_router
 from app.core.kafka_consumer_service import start_kafka_consumer, stop_kafka_consumer
+from app.core.scheduler_service import start_scheduler, stop_scheduler
 import asyncio
 from confluent_kafka.admin import AdminClient, NewTopic
 from confluent_kafka import KafkaException
@@ -18,7 +19,7 @@ def create_app():
 
     @app.on_event("startup")
     async def startup_event():
-        logger.info("Application startup event triggered. Starting Kafka consumer...")
+        logger.info("Application startup event triggered.")
         
         # Kafka 브로커 준비 대기 및 토픽 생성 로직
         admin_client = AdminClient({'bootstrap.servers': Config.KAFKA_BROKER_URL})
@@ -30,15 +31,19 @@ def create_app():
                 metadata = admin_client.list_topics(timeout=1)
                 logger.info(f"Kafka brokers are ready: {metadata.brokers}")
 
-                topics = metadata.topics
-                topic_name = 'score-updates'
-                if topic_name not in topics:
-                    logger.info(f"Topic '{topic_name}' not found. Creating it...")
-                    new_topic = NewTopic(topic_name, num_partitions=1, replication_factor=1)
-                    admin_client.create_topics([new_topic])
-                    logger.info(f"Topic '{topic_name}' created successfully.")
-                else:
-                    logger.info(f"Topic '{topic_name}' already exists.")
+                topics_to_create = ['score-updates', 'notification-requests']
+                existing_topics = metadata.topics
+                new_topics = []
+                for topic_name in topics_to_create:
+                    if topic_name not in existing_topics:
+                        logger.info(f"Topic '{topic_name}' not found. Creating it...")
+                        new_topics.append(NewTopic(topic_name, num_partitions=1, replication_factor=1))
+                    else:
+                        logger.info(f"Topic '{topic_name}' already exists.")
+                
+                if new_topics:
+                    admin_client.create_topics(new_topics)
+                    logger.info(f"Topics created successfully.")
 
                 break
             except KafkaException as e:
@@ -48,16 +53,18 @@ def create_app():
                 logger.error(f"An unexpected error occurred while waiting for Kafka: {e}")
                 await asyncio.sleep(retry_delay)
         else:
-            logger.error("Failed to connect to Kafka brokers after multiple retries. Consumer will not start.")
+            logger.error("Failed to connect to Kafka brokers after multiple retries. Consumer and scheduler will not start.")
             return
 
-        start_kafka_consumer(topics=['score-updates']) # Kafka 컨슈머 시작
-        await asyncio.sleep(5) # 컨슈머 시작 대기
+        start_kafka_consumer(topics=['score-updates', 'notification-requests']) # Kafka 컨슈머 시작
+        start_scheduler() # 스케줄러 시작
+        await asyncio.sleep(5) # 컨슈머 및 스케줄러 시작 대기
 
     @app.on_event("shutdown")
     async def shutdown_event():
-        logger.info("Application shutdown event triggered. Stopping Kafka consumer...")
+        logger.info("Application shutdown event triggered.")
         stop_kafka_consumer()
+        stop_scheduler()
 
     @app.get("/")
     async def root():

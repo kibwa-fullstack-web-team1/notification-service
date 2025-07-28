@@ -25,6 +25,14 @@ async def _process_message(msg):
 
         if topic == 'score-updates':
             await notification_helper.process_score_update_message(message_payload)
+        elif topic == 'notification-requests':
+            task = message_payload.get('task')
+            if task == 'send_weekly_report':
+                await notification_helper.send_weekly_reports()
+            elif task == 'check_inactive_users':
+                await notification_helper.check_activity_and_notify()
+            else:
+                logger.warning(f"Unknown task in notification-requests topic: {task}")
 
     except json.JSONDecodeError:
         logger.error(f"Error decoding JSON from message: {msg.value().decode('utf-8')}")

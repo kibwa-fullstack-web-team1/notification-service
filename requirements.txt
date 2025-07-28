@@ -4,3 +4,4 @@ httpx
 boto3
 python-dotenv
 confluent-kafka
+APScheduler
