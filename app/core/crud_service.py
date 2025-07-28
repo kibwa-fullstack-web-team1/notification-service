@@ -7,8 +7,7 @@ def create_report(db: Session, report: ReportCreate):
     kst_now = datetime.utcnow() + timedelta(hours=9)
     db_report = Report(
         user_id=report.user_id, 
-        report_url=report.report_url, 
-        s3_object_name=report.s3_object_name,
+        report_data=report.report_data, # report_data 저장
         report_date=kst_now
     )
     db.add(db_report)

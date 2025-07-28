@@ -73,9 +73,6 @@ async def send_weekly_reports():
         
         logger.info(f"Answers for user {senior_id}: {answers}")
 
-        report_html = "<meta charset=\"utf-8\"><h1>주간 보고서</h1>"
-        report_html += f"<h2>{senior.get('username')}님</h2>"
-
         cognitive_scores = [ans.get('cognitive_score') for ans in answers if ans.get('cognitive_score') is not None]
         semantic_scores = [ans.get('semantic_score') for ans in answers if ans.get('semantic_score') is not None]
 
@@ -87,44 +84,54 @@ async def send_weekly_reports():
         min_semantic = min(semantic_scores) if semantic_scores else 0
         max_semantic = max(semantic_scores) if semantic_scores else 0
 
-        report_html += "<h3>주간 점수 요약</h3>"
-        report_html += "<ul>"
-        report_html += f"<li>**인지 점수 평균:** {avg_cognitive:.2f} (최저: {min_cognitive:.2f}, 최고: {max_cognitive:.2f})</li>"
-        report_html += f"<li>**의미 점수 평균:** {avg_semantic:.2f} (최저: {min_semantic:.2f}, 최고: {max_semantic:.2f})</li>"
-        report_html += "</ul>"
-
-        report_html += "<h3>상세 답변 내역</h3>"
-        report_html += "<table border='1'><tr><th>질문</th><th>답변</th><th>분석 점수</th></tr>"
-        for answer in answers:
-            report_html += f"<tr><td>{answer.get('question_content')}</td><td>{answer.get('text_content')}</td><td>인지점수: {answer.get('cognitive_score')}, 의미점수: {answer.get('semantic_score')}</td></tr>"
-        report_html += "</table>"
-
-        today_str = datetime.datetime.now().strftime("%Y-%m-%d")
-        object_name = f"reports/{senior_id}/{today_str}.html"
-        logger.info(f"Report HTML type: {type(report_html)}, content length: {len(report_html) if report_html else 0}")
-        report_url = aws_notification_service.upload_file_to_s3(
-            file_content=report_html,
-            bucket_name=Config.AWS_S3_BUCKET_NAME,
-            object_name=object_name
-        )
-
-        if report_url is None:
-            logger.error(f"Failed to upload report for user {senior_id}: S3 upload returned None")
-            continue
+        report_data = {
+            "senior_id": senior_id,
+            "username": senior.get('username'),
+            "report_date": datetime.datetime.now().isoformat(),
+            "summary": {
+                "avg_cognitive_score": f"{avg_cognitive:.2f}",
+                "min_cognitive_score": f"{min_cognitive:.2f}",
+                "max_cognitive_score": f"{max_cognitive:.2f}",
+                "avg_semantic_score": f"{avg_semantic:.2f}",
+                "min_semantic_score": f"{min_semantic:.2f}",
+                "max_semantic_score": f"{max_semantic:.2f}",
+            },
+            "answers": [
+                {
+                    "question_content": ans.get('question_content'),
+                    "text_content": ans.get('text_content'),
+                    "cognitive_score": ans.get('cognitive_score'),
+                    "semantic_score": ans.get('semantic_score'),
+                } for ans in answers
+            ]
+        }
 
         db: Session = SessionLocal()
         try:
-            report_data = ReportCreate(
+            report_create_schema = ReportCreate(
                 user_id=senior_id,
-                report_url=report_url,
-                s3_object_name=object_name
+                report_data=report_data
             )
-            crud_service.create_report(db=db, report=report_data)
-            logger.info(f"Successfully saved report metadata for user {senior_id}")
+            crud_service.create_report(db=db, report=report_create_schema)
+            logger.info(f"Successfully saved report data for user {senior_id} to DB.")
         except Exception as e:
-            logger.error(f"Failed to save report metadata for user {senior_id}: {e}")
+            logger.error(f"Failed to save report data for user {senior_id}: {e}")
         finally:
             db.close()
+
+        # 이메일 발송을 위한 HTML 보고서 동적 생성
+        report_html = "<meta charset=\"utf-8\"><h1>주간 보고서</h1>"
+        report_html += f"<h2>{report_data['username']}님</h2>"
+        report_html += "<h3>주간 점수 요약</h3>"
+        report_html += "<ul>"
+        report_html += f"<li>**인지 점수 평균:** {report_data['summary']['avg_cognitive_score']} (최저: {report_data['summary']['min_cognitive_score']}, 최고: {report_data['summary']['max_cognitive_score']})</li>"
+        report_html += f"<li>**의미 점수 평균:** {report_data['summary']['avg_semantic_score']} (최저: {report_data['summary']['min_semantic_score']}, 최고: {report_data['summary']['max_semantic_score']})</li>"
+        report_html += "</ul>"
+        report_html += "<h3>상세 답변 내역</h3>"
+        report_html += "<table border='1'><tr><th>질문</th><th>답변</th><th>분석 점수</th></tr>"
+        for ans in report_data['answers']:
+            report_html += f"<tr><td>{ans['question_content']}</td><td>{ans['text_content']}</td><td>인지점수: {ans['cognitive_score']}, 의미점수: {ans['semantic_score']}</td></tr>"
+        report_html += "</table>"
 
         guardians = await user_service_client.get_guardians_for_senior(senior_id)
         if not guardians:
@@ -132,13 +139,12 @@ async def send_weekly_reports():
             continue
 
         for guardian in guardians:
-            if report_url:
-                aws_notification_service.send_email(
-                    sender_email="kibwateam1@gmail.com",
-                    recipient_email=guardian.get('email'),
-                    subject=f"[{senior.get('username')}]님의 주간 기억의 정원 보고서",
-                    body=f'<p><a href="{report_url}">여기</a>를 클릭하여 주간 보고서를 확인하세요.</p>'
-                )
+            aws_notification_service.send_email(
+                sender_email="kibwateam1@gmail.com",
+                recipient_email=guardian.get('email'),
+                subject=f"[{senior.get('username')}]님의 주간 기억의 정원 보고서",
+                body=report_html # S3 URL 대신 HTML 본문 직접 전달
+            )
 
 async def check_activity_and_notify():
     logger.info("'check_activity_and_notify' task received and will be processed.")
