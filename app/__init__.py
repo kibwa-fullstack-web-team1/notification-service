@@ -10,7 +10,8 @@ from app.utils.logger import setup_logging
 import logging
 
 from app.utils.db import Base, engine
-from app.models import report # Report 모델 임포트
+# Import all models to ensure they are registered with Base
+from app.models import report, notification_log
 
 logger = logging.getLogger(__name__)
 

@@ -4,7 +4,7 @@ import datetime
 from datetime import timedelta
 from app.config.config import Config
 from app.core import aws_notification_service, crud_service, user_service_client, daily_question_service_client
-from app.schemas.report_schema import ReportCreate
+from app import schemas # Import schemas
 from app.utils.db import SessionLocal
 from sqlalchemy.orm import Session
 
@@ -18,20 +18,47 @@ async def send_alert_to_guardians(user_id: int, reasons: list):
         return
 
     notification_reason = " ".join(reasons)
-    for guardian in guardians:
-        guardian_email = guardian.get('email')
-        guardian_phone = guardian.get('phone_number')
-        relationship_display_name = guardian.get('relationship_display_name', '보호자')
-        notification_message = f"[기억의 정원] {relationship_display_name}님의 최근 활동에 주의가 필요하여 알려드립니다. 사유: {notification_reason}"
-        
-        if guardian_phone:
-            if not guardian_phone.startswith('+'):
-                guardian_phone = "+82" + guardian_phone[1:]
-            aws_notification_service.send_sms(
-                phone_number=guardian_phone,
-                message=notification_message
-            )
-            logger.info(f"SMS 알림 발송 시도: {guardian_phone}")
+    
+    db: Session = SessionLocal()
+    try:
+        for guardian in guardians:
+            guardian_id = guardian.get('id')
+            guardian_phone = guardian.get('phone_number')
+            relationship_display_name = guardian.get('relationship_display_name', '보호자')
+            notification_message = f"[기억의 정원] {relationship_display_name}님의 최근 활동에 주의가 필요하여 알려드립니다. 사유: {notification_reason}"
+            
+            status = "failed"
+            provider_response = None
+
+            if guardian_phone and guardian_id:
+                if not guardian_phone.startswith('+'):
+                    guardian_phone = "+82" + guardian_phone[1:]
+                
+                # Assuming send_sms returns a boolean for success
+                success = aws_notification_service.send_sms(
+                    phone_number=guardian_phone,
+                    message=notification_message
+                )
+                
+                if success:
+                    status = "sent"
+                
+                logger.info(f"SMS 알림 발송 시도: {guardian_phone}, 상태: {status}")
+
+                # Create and save the notification log
+                log_entry = schemas.NotificationLogCreate(
+                    triggering_user_id=user_id,
+                    recipient_user_id=guardian_id,
+                    message=notification_message,
+                    status=status,
+                    provider_response=provider_response # Can be enhanced later
+                )
+                crud_service.create_notification_log(db=db, log=log_entry)
+                logger.info(f"Notification log created for recipient {guardian_id}")
+            else:
+                logger.info(f"Guardian {guardian.get('email')} is missing phone number or ID. Skipping SMS.")
+    finally:
+        db.close()
 
 async def process_score_update_message(message_payload: dict):
     user_id = message_payload.get('user_id')
@@ -108,7 +135,7 @@ async def send_weekly_reports():
 
         db: Session = SessionLocal()
         try:
-            report_create_schema = ReportCreate(
+            report_create_schema = schemas.ReportCreate(
                 user_id=senior_id,
                 report_data=report_data
             )
