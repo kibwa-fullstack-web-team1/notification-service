@@ -7,7 +7,7 @@ from app import models
 from app import schemas
 
 
-def def create_report(db: Session, report: schemas.ReportCreate) -> models.Report:
+def create_report(db: Session, report: schemas.ReportCreate) -> models.Report:
     kst_now = datetime.utcnow() + timedelta(hours=9)
     db_report = models.Report(
         user_id=report.user_id, 
