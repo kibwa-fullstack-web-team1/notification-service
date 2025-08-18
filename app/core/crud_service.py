@@ -19,6 +19,21 @@ def create_report(db: Session, report: schemas.ReportCreate) -> models.Report:
     db.refresh(db_report)
     return db_report
 
+def get_reports(
+    db: Session,
+    user_id: Optional[int] = None,
+    skip: int = 0,
+    limit: int = 100
+) -> List[models.Report]:
+    """
+    Retrieve reports, with optional filtering by user ID.
+    """
+    query = db.query(models.Report).order_by(models.Report.report_date.desc())
+    if user_id:
+        query = query.filter(models.Report.user_id == user_id)
+    
+    return query.offset(skip).limit(limit).all()
+
 # NotificationLog CRUD operations
 
 def create_notification_log(db: Session, log: schemas.NotificationLogCreate) -> models.NotificationLog:

@@ -72,3 +72,18 @@ def get_notification_history(
         db=db, recipient_user_id=recipient_user_id, skip=skip, limit=limit
     )
     return logs
+
+@router.get("/reports", response_model=List[schemas.Report])
+def get_weekly_reports(
+    user_id: Optional[int] = None,
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db)
+):
+    """
+    Retrieve weekly reports. Can be filtered by user_id.
+    """
+    reports = crud_service.get_reports(
+        db=db, user_id=user_id, skip=skip, limit=limit
+    )
+    return reports
