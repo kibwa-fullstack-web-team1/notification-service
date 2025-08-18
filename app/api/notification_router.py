@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, status, Depends
 from sqlalchemy.orm import Session
 from typing import List, Optional
+from datetime import datetime
 
 from app.core import aws_notification_service, crud_service
 from app.helper import verification_helper, notification_helper
@@ -76,14 +77,16 @@ def get_notification_history(
 @router.get("/reports", response_model=List[schemas.Report])
 def get_weekly_reports(
     user_id: Optional[int] = None,
+    start_date: Optional[datetime] = None,
+    end_date: Optional[datetime] = None,
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db)
 ):
     """
-    Retrieve weekly reports. Can be filtered by user_id.
+    Retrieve weekly reports. Can be filtered by user_id and date range.
     """
     reports = crud_service.get_reports(
-        db=db, user_id=user_id, skip=skip, limit=limit
+        db=db, user_id=user_id, start_date=start_date, end_date=end_date, skip=skip, limit=limit
     )
     return reports

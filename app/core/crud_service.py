@@ -22,15 +22,21 @@ def create_report(db: Session, report: schemas.ReportCreate) -> models.Report:
 def get_reports(
     db: Session,
     user_id: Optional[int] = None,
+    start_date: Optional[datetime] = None,
+    end_date: Optional[datetime] = None,
     skip: int = 0,
     limit: int = 100
 ) -> List[models.Report]:
     """
-    Retrieve reports, with optional filtering by user ID.
+    Retrieve reports, with optional filtering by user ID and date range.
     """
     query = db.query(models.Report).order_by(models.Report.report_date.desc())
     if user_id:
         query = query.filter(models.Report.user_id == user_id)
+    if start_date:
+        query = query.filter(models.Report.report_date >= start_date)
+    if end_date:
+        query = query.filter(models.Report.report_date <= end_date)
     
     return query.offset(skip).limit(limit).all()
 
