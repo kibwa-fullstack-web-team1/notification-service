@@ -8,11 +8,10 @@ from app import schemas
 
 
 def create_report(db: Session, report: schemas.ReportCreate) -> models.Report:
-    kst_now = datetime.utcnow() + timedelta(hours=9)
     db_report = models.Report(
         user_id=report.user_id, 
         report_data=report.report_data,
-        report_date=kst_now
+        report_date=report.report_date # Use report_date from schema
     )
     db.add(db_report)
     db.commit()

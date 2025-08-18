@@ -114,7 +114,6 @@ async def send_weekly_reports():
         report_data = {
             "senior_id": senior_id,
             "username": senior.get('username'),
-            "report_date": datetime.datetime.now().isoformat(),
             "summary": {
                 "avg_cognitive_score": f"{avg_cognitive:.2f}",
                 "min_cognitive_score": f"{min_cognitive:.2f}",
@@ -135,9 +134,17 @@ async def send_weekly_reports():
 
         db: Session = SessionLocal()
         try:
+            # Calculate report_date (end of the week)
+            today = datetime.date.today()
+            # Calculate the end of the current week (Sunday)
+            # weekday() returns 0 for Monday, 6 for Sunday
+            days_until_sunday = (6 - today.weekday() + 7) % 7
+            report_period_date = today + datetime.timedelta(days=days_until_sunday)
+
             report_create_schema = schemas.ReportCreate(
                 user_id=senior_id,
-                report_data=report_data
+                report_data=report_data,
+                report_date=report_period_date # Pass the calculated report_date here
             )
             crud_service.create_report(db=db, report=report_create_schema)
             logger.info(f"Successfully saved report data for user {senior_id} to DB.")
